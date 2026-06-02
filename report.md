@@ -1,4 +1,5 @@
-# 12223624 김규호
+학번: 12223624  
+이름: 김규호 
 
 # 모티베이션 & 인트로
 
@@ -128,22 +129,33 @@ $$
 
 main.py의 main 함수는 최종적으로 numpy 배열 형태의 $p_{\mathrm{hat}}$을 반환한다. 반환 배열의 모양은 $(2, num\_user)$이며, 첫 번째 행은 x 좌표, 두 번째 행은 y 좌표이다. hidden test에서는 사용자 수가 공개 데이터와 다를 수 있으므로, 사용자 수를 코드에 직접 고정하지 않고 $num\_user = d\_hat.shape[1]$을 이용해 자동으로 계산하도록 구현하였다.
 
+## 참고 개념과 본 알고리즘의 차별점
+
+본 알고리즘은 특정 논문에서 제안한 방법을 그대로 구현한 것이 아니라, 여러 robust localization 관련 개념을 과제 데이터 특성에 맞게 조합한 방식이다. Huber 기반 robust fitting은 앵커별 거리 보정 과정에서 이상치의 영향을 줄이기 위한 참고 개념으로 사용하였다. 다만 본 프로젝트에서는 Huber fitting 자체를 최종 위치추정 알고리즘으로 사용한 것이 아니라, 각 앵커의 측정거리와 실제거리 사이의 선형 보정 계수를 학습하는 전처리 단계에 적용하였다.
+
+MAD는 residual 분포에서 이상치에 강한 scale을 추정하기 위한 개념으로 참고하였다. 기존 MAD 개념은 데이터의 퍼짐 정도를 robust하게 계산하는 데 사용되지만, 본 프로젝트에서는 이를 단순 outlier 제거 기준으로만 사용하지 않고, 각 앵커 residual의 상대적 이상 정도를 판단하는 신뢰도 계산 요소로 활용하였다.
+
+MCC는 residual이 큰 데이터의 영향을 줄이는 robust weighting 개념으로 참고하였다. 일반적인 MCC는 고정된 scale parameter를 사용할 수 있지만, 본 프로젝트에서는 사용자별 residual 분포의 MAD를 이용해 scale을 adaptive하게 설정하였다. 이를 통해 hidden test에서 노이즈 수준이 달라지더라도 특정 threshold에 과하게 의존하지 않도록 하였다.
+
+Leave-One-Out은 하나의 요소를 제외했을 때 결과가 얼마나 변하는지 확인하는 진단 아이디어로 참고하였다. 본 프로젝트에서는 이 개념을 앵커 신뢰도 판단에 맞게 변형하였다. 구체적으로 각 앵커를 하나씩 제거한 뒤 위치를 다시 계산하고, 기준 위치와 제거 후 위치의 변화량을 앵커 영향도로 정의하였다. 이를 통해 residual만으로는 확인하기 어려운 구조적 영향도를 반영하였다.
+
+따라서 최종 알고리즘인 LOO-TWAMCC는 Huber 보정, MAD 기반 scale 추정, MCC 기반 robust weighting, Leave-One-Out 자기진단 개념을 단순히 나열한 것이 아니라, 앵커별 거리 측정값의 신뢰도를 계산하고 이를 최종 위치 최적화에 반영하도록 재구성한 방식이다. 특히 본 프로젝트에서 직접 설계한 부분은 앵커별 보정 계수 학습, history 신뢰도 계산, LOO 기반 앵커 영향도 계산, MAD와 Adaptive MCC를 결합한 최종 가중치 설계, 그리고 이를 이용한 weighted nonlinear least squares 위치 추정 구조이다.
 
 # Agent AI(e.g., ChatGPT, Claude Code, Gemini 등) 활용 방안
 
-본 프로젝트에서는 ChatGPT를 알고리즘 아이디어 비교, 구현 방향 점검, 오류 원인 분석, 결과 해석, 보고서 문장 정리에 활용하였다. 다만 ChatGPT가 제안한 내용을 그대로 제출한 것은 아니며, 본인이 직접 데이터 구조를 확인하고 코드를 실행하면서 성능을 비교한 뒤 최종 알고리즘을 선택하였다. 즉, ChatGPT는 의사결정을 대신한 도구가 아니라, 알고리즘 설계와 구현 과정에서 선택지를 정리하고 검토를 돕는 보조 도구로 사용하였다.
+본 프로젝트에서는 ChatGPT를 알고리즘 아이디어 비교, 구현 방향 점검, 오류 원인 분석, 결과 해석, 보고서 문장 정리에 보조적으로 활용하였다. 다만 ChatGPT가 제안한 내용을 그대로 제출한 것은 아니며, 본인이 직접 데이터 구조를 확인하고 코드를 실행하면서 성능을 비교한 뒤 최종 알고리즘을 선택하였다. 즉, ChatGPT는 의사결정을 대신한 도구가 아니라, 알고리즘 설계와 구현 과정에서 여러 선택지를 정리하고 검토를 돕는 Agent AI로 활용하였다.
 
-알고리즘 설계 단계에서는 중간발표까지 사용했던 앵커별 거리 보정, DBSCAN 기반 후보 군집화, MAD 기반 이상치 판단, MCC 기반 robust weighting의 역할을 다시 검토하였다. 본인은 중간발표 피드백을 바탕으로 각 기법이 현재 데이터의 어떤 문제를 해결하는지 다시 정리하였다. 이 과정에서 ChatGPT는 각 방법의 장점과 한계를 비교하는 데 도움을 주었고, 본인은 hidden test에서의 안정성, 구현 가능성, 성능 개선 가능성을 기준으로 최종 방향을 결정하였다. 그 결과 기존에 고려했던 앵커별 보정, MAD, MCC는 유지하되, DBSCAN 후보 군집화 대신 Leave-One-Out 자기진단 방식을 핵심 아이디어로 선택하였다.
+알고리즘 설계 단계에서는 중간발표까지 사용했던 앵커별 거리 보정, DBSCAN 기반 후보 군집화, MAD 기반 이상치 판단, MCC 기반 robust weighting의 역할을 다시 검토하였다. 본인은 중간발표 이후 각 기법이 현재 데이터의 어떤 문제를 해결하는지 다시 정리하였고, ChatGPT는 각 방법의 장점과 한계를 비교하는 데 도움을 주었다. 이 과정에서 본인은 hidden test에서의 안정성, 구현 가능성, 성능 개선 가능성을 기준으로 최종 방향을 결정하였다. 그 결과 기존에 사용했던 앵커별 거리 보정, MAD, MCC는 유지하되, DBSCAN 후보 군집화 대신 Leave-One-Out 자기진단 방식을 핵심 아이디어로 선택하였다.
 
-구현 단계에서는 ChatGPT를 이용해 train.py와 main.py의 역할 분리를 점검하였다. 본인은 제공된 DH_FR1.mat 데이터의 구조를 확인하고, 학습 단계에서 사용할 수 있는 정답 위치와 hidden test 단계에서 사용할 수 없는 정보를 구분하였다. 이를 바탕으로 train.py에서는 정답 위치를 이용해 앵커별 보정 계수와 history 신뢰도를 학습하고, main.py에서는 정답 위치 없이 model.npz와 입력 거리값만 사용하여 위치를 추정하도록 구현하였다. ChatGPT는 코드 구조와 오류 원인 분석을 보조하였고, 본인은 실제 터미널에서 코드를 실행하여 main 함수의 반환 형태, 사용자 수 자동 처리, model.npz 로딩 여부를 확인하였다.
+구현 단계에서는 ChatGPT를 이용해 `train.py`와 `main.py`의 역할 분리를 점검하였다. 본인은 제공된 `DH_FR1.mat` 데이터의 구조를 확인하고, 학습 단계에서 사용할 수 있는 정답 위치와 hidden test 단계에서 사용할 수 없는 정보를 구분하였다. 이를 바탕으로 `train.py`에서는 공개된 정답 위치를 이용해 앵커별 보정 계수와 history 신뢰도를 학습하고, `main.py`에서는 정답 위치 없이 `model.npz`와 입력 거리값만 사용하여 위치를 추정하도록 구현하였다. ChatGPT는 코드 구조 검토와 오류 원인 분석을 보조하였고, 본인은 실제 터미널에서 코드를 실행하여 `main()` 함수의 반환 형태, 사용자 수 자동 처리, `model.npz` 로딩 여부를 확인하였다.
 
-성능 검증 단계에서는 본인이 직접 Raw Least Squares, Calibrated Least Squares, LOO-TWAMCC를 실행하여 결과를 비교하였다. ChatGPT는 결과를 표로 정리하고, 어떤 baseline과 비교하는 것이 공정한지 논리적으로 정리하는 데 도움을 주었다. 본인은 Raw Least Squares와의 비교만으로는 제안 알고리즘의 실제 기여를 판단하기 어렵다고 보았고, 앵커별 보정을 동일하게 적용한 Calibrated Least Squares를 더 공정한 비교 대상으로 설정하였다.
+성능 검증 단계에서는 본인이 직접 Raw Least Squares, Calibrated Least Squares, LOO-TWAMCC를 실행하여 결과를 비교하였다. ChatGPT는 결과를 표로 정리하고, 어떤 baseline과 비교하는 것이 공정한지 논리적으로 정리하는 데 도움을 주었다. 본인은 Raw Least Squares와의 비교만으로는 제안 알고리즘의 실제 기여를 판단하기 어렵다고 보았고, 앵커별 보정이 동일하게 적용된 Calibrated Least Squares를 더 공정한 비교 대상으로 설정하였다. 이를 통해 제안 알고리즘의 성능 향상이 단순한 거리 보정 때문인지, 아니면 Leave-One-Out 기반 신뢰도와 Adaptive MCC weighting의 효과인지 더 명확하게 확인하고자 하였다.
 
-파라미터 선택 단계에서도 ChatGPT를 보조적으로 활용하였다. 본인은 전체 700개 공개 데이터에만 맞춰 파라미터를 고르면 hidden test에 과적합될 수 있다고 판단하였다. 이에 따라 validation split 기반으로 일부 데이터를 분리하고, 나머지 데이터로 다시 학습한 뒤 validation data에서 성능을 확인하는 방식으로 tune.py를 구성하였다. 여러 random seed를 사용하여 특정 split에만 우연히 잘 맞는 파라미터가 선택되지 않도록 하였고, 최종 파라미터는 이러한 검증 결과를 바탕으로 본인이 선택하였다.
+파라미터 선택 단계에서도 ChatGPT를 보조적으로 활용하였다. 본인은 전체 공개 데이터에만 맞춰 파라미터를 고르면 hidden test에 과적합될 수 있다고 판단하였다. 따라서 validation split을 구성하여 일부 데이터를 검증용으로 분리하고, 나머지 데이터로 다시 학습한 뒤 validation data에서 성능을 확인하는 방식으로 `tune.py`를 구성하였다. 또한 여러 random seed를 사용하여 특정 split에만 우연히 잘 맞는 파라미터가 선택되지 않도록 하였다. ChatGPT는 이러한 검증 방식의 의미와 결과 해석을 정리하는 데 도움을 주었고, 최종 파라미터는 validation 결과와 hidden test 안정성을 고려하여 본인이 선택하였다.
 
-보고서 작성 단계에서는 ChatGPT를 문장 정리와 형식 점검에 활용하였다. 본인은 실제 구현 과정, 실험 결과, 알고리즘 수정 이유, baseline 비교 방식, validation split 결과를 제공하였고, ChatGPT는 이를 report.md의 필수 섹션 형식에 맞게 정리하는 데 도움을 주었다. 최종 보고서 내용은 본인이 직접 검토하여 실제 구현과 다르지 않은지 확인하였다.
+보고서 작성 단계에서는 ChatGPT를 문장 정리와 형식 점검에 활용하였다. 본인은 실제 구현 과정, 실험 결과, 알고리즘 수정 이유, baseline 비교 방식, validation split 결과를 제공하였고, ChatGPT는 이를 report.md의 필수 섹션 형식에 맞게 정리하는 데 도움을 주었다. 이후 최종 보고서 내용이 실제 코드 구현과 다르지 않은지, 과장된 표현이나 잘못된 설명이 없는지 본인이 직접 검토하였다.
 
-정리하면, ChatGPT는 알고리즘 후보 비교, 코드 구조 점검, 오류 원인 분석, 결과 해석 보조, 보고서 표현 정리에 사용되었다. 반면 본인은 데이터 특성 파악, 최종 알고리즘 선택, 코드 실행과 성능 검증, baseline 비교의 공정성 판단, hidden test를 고려한 파라미터 선택을 직접 수행하였다. 따라서 본 프로젝트에서 AI는 최종 판단을 대신한 것이 아니라, 본인이 설계와 검증을 수행하는 과정에서 보조적으로 활용한 Agent AI이다.
+정리하면, ChatGPT는 알고리즘 후보 비교, 코드 구조 점검, 오류 원인 분석, 결과 해석 보조, 보고서 표현 정리에 사용되었다. 반면 데이터 특성 파악, 최종 알고리즘 선택, 코드 실행과 성능 검증, baseline 비교의 공정성 판단, hidden test를 고려한 파라미터 선택은 본인이 직접 수행하였다. 따라서 본 프로젝트에서 AI는 최종 판단을 대신한 것이 아니라, 본인이 설계와 검증을 수행하는 과정에서 보조적으로 활용한 Agent AI이다.
 
 # 결과 도출 & 디스커션
 
@@ -188,3 +200,16 @@ Raw Least Squares는 전체적으로 오차가 크게 나타났다. 이는 측�
 향후 개선 방향으로는 LOO 계산을 더 효율적으로 근사하는 방법을 고려할 수 있다. 예를 들어 모든 앵커를 제거해 다시 최적화하는 대신, 선형화된 영향도 근사식을 사용하면 계산량을 줄일 수 있다. 또한 앵커의 기하학적 배치까지 함께 고려하면, 중요한 앵커와 불안정한 앵커를 더 정교하게 구분할 수 있을 것이다.
 
 결론적으로 LOO-TWAMCC는 단순 거리 보정 방식보다 평균 오차와 큰 오차를 모두 줄였다. 또한 baseline과의 비교도 Calibrated Least Squares를 기준으로 수행하여 비교의 공정성을 확보하고자 하였다. 따라서 본 알고리즘은 주어진 데이터셋에서 성능, 안정성, 해석 가능성 측면에서 적합한 최종 위치추정 알고리즘이라고 판단하였다.
+
+## Reference
+
+본 프로젝트의 최종 알고리즘인 LOO-TWAMCC는 특정 논문이나 기존 알고리즘을 그대로 구현한 것이 아니라, robust statistics, robust optimization, MCC weighting, Leave-One-Out 진단 개념을 과제 데이터 특성에 맞게 조합하여 직접 설계한 방식이다. 아래 자료들은 알고리즘을 설계하는 과정에서 참고한 기반 개념과 구현 도구이다.
+
+| Reference | 본 프로젝트에서 참고한 내용 |
+| --- | --- |
+| SciPy `least_squares` Documentation | 비선형 최소제곱 최적화와 `soft_l1`, `huber`와 같은 robust loss 사용 방식을 참고하였다. 본 프로젝트에서는 위치 추정 문제를 weighted nonlinear least squares 형태로 구성할 때 참고하였다. |
+| Huber, P. J. (1964), *Robust Estimation of a Location Parameter* | 이상치가 포함된 데이터에서 큰 residual의 영향을 줄이는 robust estimation 개념을 참고하였다. 본 프로젝트에서는 앵커별 거리 보정 과정에서 이상치에 덜 민감한 fitting 구조를 설계할 때 참고하였다. |
+| Rousseeuw, P. J. and Croux, C. (1993), *Alternatives to the Median Absolute Deviation* | 평균과 표준편차보다 이상치에 강한 scale 추정 방식으로 MAD 개념을 참고하였다. 본 프로젝트에서는 residual 분포의 robust scale을 계산하고, 앵커 신뢰도와 adaptive scale 설정에 활용하였다. |
+| Liu, W., Pokharel, P. P., and Principe, J. C. (2007), *Correntropy: Properties and Applications in Non-Gaussian Signal Processing* | residual이 큰 데이터의 영향을 부드럽게 줄이는 correntropy 및 MCC 기반 weighting 개념을 참고하였다. 본 프로젝트에서는 residual 크기에 따라 앵커 가중치를 조절하는 Adaptive MCC weight 설계에 참고하였다. |
+| Stone, M. (1974), *Cross-Validatory Choice and Assessment of Statistical Predictions* | 하나의 요소를 제외했을 때 결과 변화량을 확인하는 Leave-One-Out 진단 개념을 참고하였다. 본 프로젝트에서는 각 앵커를 하나씩 제거했을 때 위치 추정 결과가 얼마나 변하는지를 앵커 영향도 판단에 활용하였다. |
+| 과제 제공 데이터셋 `DH_FR1.mat` 및 실행 규격 | `BS_positions`, `d_hat`, `p`의 데이터 구조와 `main()` 함수가 `(2, num_user)` 형태의 numpy 배열을 반환해야 한다는 제출 규격을 참고하였다. 이를 기준으로 `train.py`, `main.py`, `model.npz` 구조를 분리하여 구현하였다. |
